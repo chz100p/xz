@@ -15,9 +15,9 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/ulikunitz/xz"
-	"github.com/ulikunitz/xz/internal/xlog"
-	"github.com/ulikunitz/xz/lzma"
+	"github.com/chz100p/xz"
+	"github.com/chz100p/xz/internal/xlog"
+	"github.com/chz100p/xz/lzma"
 )
 
 // signalHandler establishes the signal handler for SIGTERM(1) and
