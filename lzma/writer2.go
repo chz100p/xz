@@ -79,8 +79,8 @@ func (c *Writer2Config) Verify() error {
 type Writer2 struct {
 	w io.Writer
 
-	start   *state
-	encoder *encoder
+	//start   *state
+	//encoder *encoder
 
 	cstate chunkState
 	ctype  chunkType
@@ -102,34 +102,34 @@ func (c Writer2Config) NewWriter2(lzma2 io.Writer) (w *Writer2, err error) {
 	}
 	w = &Writer2{
 		w:      lzma2,
-		start:  newState(*c.Properties),
+		//start:  newState(*c.Properties),
 		cstate: start,
 		ctype:  start.defaultChunkType(),
 	}
 	w.buf.Grow(maxCompressed)
 	w.lbw = LimitedByteWriter{BW: &w.buf, N: maxCompressed}
-	m, err := c.Matcher.new(c.DictCap)
-	if err != nil {
-		return nil, err
-	}
-	d, err := newEncoderDict(c.DictCap, c.BufSize, m)
-	if err != nil {
-		return nil, err
-	}
-	w.encoder, err = newEncoder(&w.lbw, cloneState(w.start), d, 0)
-	if err != nil {
-		return nil, err
-	}
+	//m, err := c.Matcher.new(c.DictCap)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//d, err := newEncoderDict(c.DictCap, c.BufSize, m)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//w.encoder, err = newEncoder(&w.lbw, cloneState(w.start), d, 0)
+	//if err != nil {
+	//	return nil, err
+	//}
 	return w, nil
 }
 
-// written returns the number of bytes written to the current chunk
-func (w *Writer2) written() int {
-	if w.encoder == nil {
-		return 0
-	}
-	return int(w.encoder.Compressed()) + w.encoder.dict.Buffered()
-}
+//// written returns the number of bytes written to the current chunk
+//func (w *Writer2) written() int {
+//	if w.encoder == nil {
+//		return 0
+//	}
+//	return int(w.encoder.Compressed()) + w.encoder.dict.Buffered()
+//}
 
 // errClosed indicates that the writer is closed.
 var errClosed = errors.New("lzma: writer closed")
@@ -142,17 +142,42 @@ func (w *Writer2) Write(p []byte) (n int, err error) {
 		return 0, errClosed
 	}
 	for n < len(p) {
-		m := maxUncompressed - w.written()
-		if m <= 0 {
-			panic("lzma: maxUncompressed reached")
-		}
+		//m := maxUncompressed - w.written()
+		//if m <= 0 {
+		//	panic("lzma: maxUncompressed reached")
+		//}
+		m := maxUncompressed
 		var q []byte
 		if n+m < len(p) {
 			q = p[n : n+m]
 		} else {
+			m = len(p) - n
 			q = p[n:]
 		}
-		k, err := w.encoder.Write(q)
+		//k, err := w.encoder.Write(q)
+	switch w.ctype {
+	case cLRND:
+		w.ctype = cUD
+	default:
+		w.ctype = cU
+	}
+	//w.encoder.state = w.start
+
+	header := chunkHeader{
+		ctype:        w.ctype,
+		uncompressed: uint32(m - 1),
+	}
+	hdata, err := header.MarshalBinary()
+	if err != nil {
+		return 0, err
+	}
+	if _, err = w.w.Write(hdata); err != nil {
+		return 0, err
+	}
+	k, err := w.w.Write(q)
+	if err != nil {
+		return k, err
+	}
 		n += k
 		if err != nil && err != ErrLimit {
 			return n, err
@@ -166,110 +191,110 @@ func (w *Writer2) Write(p []byte) (n int, err error) {
 	return n, nil
 }
 
-// writeUncompressedChunk writes an uncompressed chunk to the LZMA2
-// stream.
-func (w *Writer2) writeUncompressedChunk() error {
-	u := w.encoder.Compressed()
-	if u <= 0 {
-		return errors.New("lzma: can't write empty uncompressed chunk")
-	}
-	if u > maxUncompressed {
-		panic("overrun of uncompressed data limit")
-	}
-	switch w.ctype {
-	case cLRND:
-		w.ctype = cUD
-	default:
-		w.ctype = cU
-	}
-	w.encoder.state = w.start
+//// writeUncompressedChunk writes an uncompressed chunk to the LZMA2
+//// stream.
+//func (w *Writer2) writeUncompressedChunk() error {
+//	//u := w.encoder.Compressed()
+//	//if u <= 0 {
+//	//	return errors.New("lzma: can't write empty uncompressed chunk")
+//	//}
+//	//if u > maxUncompressed {
+//	//	panic("overrun of uncompressed data limit")
+//	//}
+//	switch w.ctype {
+//	case cLRND:
+//		w.ctype = cUD
+//	default:
+//		w.ctype = cU
+//	}
+//	//w.encoder.state = w.start
+//
+//	header := chunkHeader{
+//		ctype:        w.ctype,
+//		uncompressed: uint32(u - 1),
+//	}
+//	hdata, err := header.MarshalBinary()
+//	if err != nil {
+//		return err
+//	}
+//	if _, err = w.w.Write(hdata); err != nil {
+//		return err
+//	}
+//	_, err = w.encoder.dict.CopyN(w.w, int(u))
+//	return err
+//}
 
-	header := chunkHeader{
-		ctype:        w.ctype,
-		uncompressed: uint32(u - 1),
-	}
-	hdata, err := header.MarshalBinary()
-	if err != nil {
-		return err
-	}
-	if _, err = w.w.Write(hdata); err != nil {
-		return err
-	}
-	_, err = w.encoder.dict.CopyN(w.w, int(u))
-	return err
-}
+//// writeCompressedChunk writes a compressed chunk to the underlying
+//// writer.
+//func (w *Writer2) writeCompressedChunk() error {
+//	if w.ctype == cU || w.ctype == cUD {
+//		panic("chunk type uncompressed")
+//	}
+//
+//	u := w.encoder.Compressed()
+//	if u <= 0 {
+//		return errors.New("writeCompressedChunk: empty chunk")
+//	}
+//	if u > maxUncompressed {
+//		panic("overrun of uncompressed data limit")
+//	}
+//	c := w.buf.Len()
+//	if c <= 0 {
+//		panic("no compressed data")
+//	}
+//	if c > maxCompressed {
+//		panic("overrun of compressed data limit")
+//	}
+//	header := chunkHeader{
+//		ctype:        w.ctype,
+//		uncompressed: uint32(u - 1),
+//		compressed:   uint16(c - 1),
+//		props:        w.encoder.state.Properties,
+//	}
+//	hdata, err := header.MarshalBinary()
+//	if err != nil {
+//		return err
+//	}
+//	if _, err = w.w.Write(hdata); err != nil {
+//		return err
+//	}
+//	_, err = io.Copy(w.w, &w.buf)
+//	return err
+//}
 
-// writeCompressedChunk writes a compressed chunk to the underlying
-// writer.
-func (w *Writer2) writeCompressedChunk() error {
-	if w.ctype == cU || w.ctype == cUD {
-		panic("chunk type uncompressed")
-	}
-
-	u := w.encoder.Compressed()
-	if u <= 0 {
-		return errors.New("writeCompressedChunk: empty chunk")
-	}
-	if u > maxUncompressed {
-		panic("overrun of uncompressed data limit")
-	}
-	c := w.buf.Len()
-	if c <= 0 {
-		panic("no compressed data")
-	}
-	if c > maxCompressed {
-		panic("overrun of compressed data limit")
-	}
-	header := chunkHeader{
-		ctype:        w.ctype,
-		uncompressed: uint32(u - 1),
-		compressed:   uint16(c - 1),
-		props:        w.encoder.state.Properties,
-	}
-	hdata, err := header.MarshalBinary()
-	if err != nil {
-		return err
-	}
-	if _, err = w.w.Write(hdata); err != nil {
-		return err
-	}
-	_, err = io.Copy(w.w, &w.buf)
-	return err
-}
-
-// writes a single chunk to the underlying writer.
-func (w *Writer2) writeChunk() error {
-	u := int(uncompressedHeaderLen + w.encoder.Compressed())
-	c := headerLen(w.ctype) + w.buf.Len()
-	if u < c {
-		return w.writeUncompressedChunk()
-	}
-	return w.writeCompressedChunk()
-}
+//// writes a single chunk to the underlying writer.
+//func (w *Writer2) writeChunk() error {
+//	//u := int(uncompressedHeaderLen + w.encoder.Compressed())
+//	//c := headerLen(w.ctype) + w.buf.Len()
+//	//if u < c {
+//		return w.writeUncompressedChunk()
+//	//}
+//	//return w.writeCompressedChunk()
+//}
 
 // flushChunk terminates the current chunk. The encoder will be reset
 // to support the next chunk.
 func (w *Writer2) flushChunk() error {
-	if w.written() == 0 {
-		return nil
-	}
+	//if w.written() == 0 {
+	//	return nil
+	//}
 	var err error
-	if err = w.encoder.Close(); err != nil {
-		return err
-	}
-	if err = w.writeChunk(); err != nil {
-		return err
-	}
+	//if err = w.encoder.Close(); err != nil {
+	//	return err
+	//}
+	//if err = w.writeChunk(); err != nil {
+	//	return err
+	//}
 	w.buf.Reset()
 	w.lbw.N = maxCompressed
-	if err = w.encoder.Reopen(&w.lbw); err != nil {
-		return err
-	}
+	//if err = w.encoder.Reopen(&w.lbw); err != nil {
+	//	return err
+	//}
 	if err = w.cstate.next(w.ctype); err != nil {
 		return err
 	}
 	w.ctype = w.cstate.defaultChunkType()
-	w.start = cloneState(w.encoder.state)
+	//w.start = cloneState(w.encoder.state)
 	return nil
 }
 
@@ -279,11 +304,11 @@ func (w *Writer2) Flush() error {
 	if w.cstate == stop {
 		return errClosed
 	}
-	for w.written() > 0 {
+	//for w.written() > 0 {
 		if err := w.flushChunk(); err != nil {
 			return err
 		}
-	}
+	//}
 	return nil
 }
 
