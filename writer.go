@@ -19,7 +19,7 @@ type WriterConfig struct {
 	DictCap    int
 	BufSize    int
 	BlockSize  int64
-	// checksum method: CRC32, CRC64 or SHA256 (default: CRC64)
+	// checksum method: CRC32, CRC64 or SHA256 (default: CRC32
 	CheckSum byte
 	// Forces NoChecksum (default: false)
 	NoCheckSum bool
@@ -42,7 +42,7 @@ func (c *WriterConfig) fill() {
 		c.BlockSize = maxInt64
 	}
 	if c.CheckSum == 0 {
-		c.CheckSum = CRC64
+		c.CheckSum = CRC32
 	}
 	if c.NoCheckSum {
 		c.CheckSum = None
