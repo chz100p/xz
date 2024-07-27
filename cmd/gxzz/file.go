@@ -11,13 +11,13 @@ import (
 	"io"
 	"os"
 	"os/signal"
-	"path/filepath"
-	"strings"
+//	"path/filepath"
+//	"strings"
 	"syscall"
 
 	"github.com/chz100p/xz"
-	"github.com/chz100p/xz/internal/xlog"
-	"github.com/chz100p/xz/lzma"
+//	"github.com/chz100p/xz/internal/xlog"
+//	"github.com/chz100p/xz/lzma"
 )
 
 // signalHandler establishes the signal handler for SIGTERM(1) and
@@ -43,124 +43,124 @@ func signalHandler(w *writer) chan<- struct{} {
 // format defines the newCompressor and newDecompressor functions for a
 // compression format.
 type format struct {
-	newCompressor func(w io.Writer, opts *options) (c io.WriteCloser,
+	newCompressor func(w io.Writer/*, opts *options*/) (c io.WriteCloser,
 		err error)
-	newDecompressor func(r io.Reader, opts *options) (d io.Reader,
-		err error)
-	validHeader func(br *bufio.Reader) bool
+//	newDecompressor func(r io.Reader, opts *options) (d io.Reader,
+//		err error)
+//	validHeader func(br *bufio.Reader) bool
 }
 
-// dictCapExps maps preset values to exponent for dictionary capacity
-// sizes.
-var lzmaDictCapExps = []uint{18, 20, 21, 22, 22, 23, 23, 24, 25, 26}
+//// dictCapExps maps preset values to exponent for dictionary capacity
+//// sizes.
+//var lzmaDictCapExps = []uint{18, 20, 21, 22, 22, 23, 23, 24, 25, 26}
 
 // formats contains the formats supported by gxzz.
 var formats = map[string]*format{
-	"lzma": &format{
-		newCompressor: func(w io.Writer, opts *options,
-		) (c io.WriteCloser, err error) {
-			lc := lzma.WriterConfig{
-				Properties: &lzma.Properties{LC: 3, LP: 0,
-					PB: 2},
-				DictCap: 1 << lzmaDictCapExps[opts.preset],
-			}
-			return lc.NewWriter(w)
-		},
-		newDecompressor: func(r io.Reader, opts *options,
-		) (d io.Reader, err error) {
-			lc := lzma.ReaderConfig{
-				DictCap: 1 << lzmaDictCapExps[opts.preset],
-			}
-			return lc.NewReader(r)
-		},
-		validHeader: func(br *bufio.Reader) bool {
-			h, err := br.Peek(lzma.HeaderLen)
-			if err != nil {
-				return false
-			}
-			return lzma.ValidHeader(h)
-		},
-	},
+//	"lzma": &format{
+//		newCompressor: func(w io.Writer, opts *options,
+//		) (c io.WriteCloser, err error) {
+//			lc := lzma.WriterConfig{
+//				Properties: &lzma.Properties{LC: 3, LP: 0,
+//					PB: 2},
+//				DictCap: 1 << lzmaDictCapExps[opts.preset],
+//			}
+//			return lc.NewWriter(w)
+//		},
+//		newDecompressor: func(r io.Reader, opts *options,
+//		) (d io.Reader, err error) {
+//			lc := lzma.ReaderConfig{
+//				DictCap: 1 << lzmaDictCapExps[opts.preset],
+//			}
+//			return lc.NewReader(r)
+//		},
+//		validHeader: func(br *bufio.Reader) bool {
+//			h, err := br.Peek(lzma.HeaderLen)
+//			if err != nil {
+//				return false
+//			}
+//			return lzma.ValidHeader(h)
+//		},
+//	},
 	"xz": &format{
-		newCompressor: func(w io.Writer, opts *options,
+		newCompressor: func(w io.Writer, /*opts *options,*/
 		) (c io.WriteCloser, err error) {
 			cfg := xz.WriterConfig{
-				DictCap: 1 << lzmaDictCapExps[opts.preset],
+//				DictCap: 1 << lzmaDictCapExps[opts.preset],
 			}
 			return cfg.NewWriter(w)
 		},
-		newDecompressor: func(r io.Reader, opts *options,
-		) (d io.Reader, err error) {
-			cfg := xz.ReaderConfig{
-				DictCap: 1 << lzmaDictCapExps[opts.preset],
-			}
-			return cfg.NewReader(r)
-		},
-		validHeader: func(br *bufio.Reader) bool {
-			h, err := br.Peek(xz.HeaderLen)
-			if err != nil {
-				return false
-			}
-			return xz.ValidHeader(h)
-		},
+//		newDecompressor: func(r io.Reader, opts *options,
+//		) (d io.Reader, err error) {
+//			cfg := xz.ReaderConfig{
+//				DictCap: 1 << lzmaDictCapExps[opts.preset],
+//			}
+//			return cfg.NewReader(r)
+//		},
+//		validHeader: func(br *bufio.Reader) bool {
+//			h, err := br.Peek(xz.HeaderLen)
+//			if err != nil {
+//				return false
+//			}
+//			return xz.ValidHeader(h)
+//		},
 	},
 }
 
 var errBase = errors.New("name has no base part")
 
-// targetName finds the correct target name taking the options into
-// account.
-func targetName(path string, opts *options) (target string, err error) {
-	if path == "-" {
-		panic("path name - not supported")
-	}
-	if len(path) == 0 {
-		return "", errors.New("empty file name not supported")
-	}
-	ext := "." + opts.format
-	tarExt := ".txz"
-	if opts.format == "lzma" {
-		tarExt = ".tlz"
-	}
-	if !opts.decompress {
-		if strings.HasSuffix(path, ext) {
-			return "", fmt.Errorf(
-				"%s: file has already %s suffix", path, ext)
-		}
-		if strings.HasSuffix(path, tarExt) {
-			return "", fmt.Errorf(
-				"%s: file has already %s suffix", path, tarExt)
-		}
-		return path + ext, nil
-	}
-	if strings.HasSuffix(path, ext) {
-		target = path[:len(path)-len(ext)]
-		if filepath.Base(target) == "" {
-			return "", &userPathError{path, errBase}
-		}
-		return target, nil
-	}
-	if strings.HasSuffix(path, tarExt) {
-		target = path[:len(path)-len(tarExt)]
-		if filepath.Base(target) == "" {
-			return "", &userPathError{path, errBase}
-		}
-		return target + ".tar", nil
-	}
-	return path, nil
-}
+//// targetName finds the correct target name taking the options into
+//// account.
+//func targetName(path string, opts *options) (target string, err error) {
+//	if path == "-" {
+//		panic("path name - not supported")
+//	}
+//	if len(path) == 0 {
+//		return "", errors.New("empty file name not supported")
+//	}
+//	ext := "." + opts.format
+//	tarExt := ".txz"
+//	if opts.format == "lzma" {
+//		tarExt = ".tlz"
+//	}
+//	if !opts.decompress {
+//		if strings.HasSuffix(path, ext) {
+//			return "", fmt.Errorf(
+//				"%s: file has already %s suffix", path, ext)
+//		}
+//		if strings.HasSuffix(path, tarExt) {
+//			return "", fmt.Errorf(
+//				"%s: file has already %s suffix", path, tarExt)
+//		}
+//		return path + ext, nil
+//	}
+//	if strings.HasSuffix(path, ext) {
+//		target = path[:len(path)-len(ext)]
+//		if filepath.Base(target) == "" {
+//			return "", &userPathError{path, errBase}
+//		}
+//		return target, nil
+//	}
+//	if strings.HasSuffix(path, tarExt) {
+//		target = path[:len(path)-len(tarExt)]
+//		if filepath.Base(target) == "" {
+//			return "", &userPathError{path, errBase}
+//		}
+//		return target + ".tar", nil
+//	}
+//	return path, nil
+//}
 
-// tmpName converts the path string into a temporary name by appending
-// .decompress or .compress to the file path.
-func tmpName(path string, decompress bool) string {
-	var ext string
-	if decompress {
-		ext = ".decompress"
-	} else {
-		ext = ".compress"
-	}
-	return path + ext
-}
+//// tmpName converts the path string into a temporary name by appending
+//// .decompress or .compress to the file path.
+//func tmpName(path string, decompress bool) string {
+//	var ext string
+//	if decompress {
+//		ext = ".decompress"
+//	} else {
+//		ext = ".compress"
+//	}
+//	return path + ext
+//}
 
 // writer is used as file writer for decompression and file compressor
 // for compression.
@@ -174,25 +174,25 @@ type writer struct {
 }
 
 // writerFormat select the writer format.
-func writerFormat(opts *options) (f *format, err error) {
+func writerFormat(/*opts *options*/) (f *format, err error) {
 	var ok bool
-	if f, ok = formats[opts.format]; !ok {
+	if f, ok = formats["xz"/*opts.format*/]; !ok {
 		return nil, fmt.Errorf("compression format %q not supported",
-			opts.format)
+			"xz"/*opts.format*/)
 	}
 	return f, nil
 }
 
 // newCompressor creates a compressor for the given writer.
-func newCompressor(w io.Writer, opts *options) (cmp io.WriteCloser, err error) {
-	if opts.decompress {
-		panic("no compressor needed")
-	}
-	f, err := writerFormat(opts)
+func newCompressor(w io.Writer/*, opts *options*/) (cmp io.WriteCloser, err error) {
+//	if opts.decompress {
+//		panic("no compressor needed")
+//	}
+	f, err := writerFormat(/*opts*/)
 	if err != nil {
 		return nil, err
 	}
-	if cmp, err = f.newCompressor(w, opts); err != nil {
+	if cmp, err = f.newCompressor(w/*, opts*/); err != nil {
 		return nil, err
 	}
 	return cmp, nil
@@ -200,37 +200,37 @@ func newCompressor(w io.Writer, opts *options) (cmp io.WriteCloser, err error) {
 
 // newWriter creates a new file writer. Note that options must contain
 // the actual compression format supported and not just auto.
-func newWriter(path string, perm os.FileMode, opts *options,
+func newWriter(/*path string, perm os.FileMode, opts *options,*/
 ) (w *writer, err error) {
-	w = &writer{name: path}
-	if opts.stdout {
+	w = &writer{name: "-"/*path*/}
+	//if opts.stdout {
 		w.f = os.Stdout
 		w.name = "-"
-	} else {
-		name, err := targetName(path, opts)
-		if err != nil {
-			return nil, err
-		}
-		if _, err = os.Stat(name); !os.IsNotExist(err) {
-			if !opts.force {
-				return nil, &userPathError{
-					Path: name,
-					Err:  errors.New("file exists")}
-			}
-		}
-		tmp := tmpName(name, opts.decompress)
-		if w.f, err = os.OpenFile(tmp,
-			os.O_WRONLY|os.O_CREATE|os.O_EXCL, perm); err != nil {
-			return nil, err
-		}
-		w.name = name
-	}
+//	} else {
+//		name, err := targetName(path, opts)
+//		if err != nil {
+//			return nil, err
+//		}
+//		if _, err = os.Stat(name); !os.IsNotExist(err) {
+//			if !opts.force {
+//				return nil, &userPathError{
+//					Path: name,
+//					Err:  errors.New("file exists")}
+//			}
+//		}
+//		tmp := tmpName(name, opts.decompress)
+//		if w.f, err = os.OpenFile(tmp,
+//			os.O_WRONLY|os.O_CREATE|os.O_EXCL, perm); err != nil {
+//			return nil, err
+//		}
+//		w.name = name
+//	}
 	w.bw = bufio.NewWriter(w.f)
-	if opts.decompress {
-		w.Writer = w.bw
-		return w, nil
-	}
-	w.cmp, err = newCompressor(w.bw, opts)
+//	if opts.decompress {
+//		w.Writer = w.bw
+//		return w, nil
+//	}
+	w.cmp, err = newCompressor(w.bw/*, opts*/)
 	if err != nil {
 		return nil, &userPathError{w.name, err}
 	}
@@ -238,10 +238,10 @@ func newWriter(path string, perm os.FileMode, opts *options,
 	return w, nil
 }
 
-// isStdout checks whether the parameter refers to stdout.
-func isStdout(f *os.File) bool {
-	return f.Fd() == uintptr(syscall.Stdout)
-}
+//// isStdout checks whether the parameter refers to stdout.
+//func isStdout(f *os.File) bool {
+//	return f.Fd() == uintptr(syscall.Stdout)
+//}
 
 var errInval = errors.New("invalid value")
 
@@ -256,16 +256,16 @@ func (w *writer) Close() error {
 	defer func() { w.f = nil }()
 
 	if !w.success {
-		if isStdout(w.f) {
+//		if isStdout(w.f) {
 			return nil
-		}
-		if err = w.f.Close(); err != nil {
-			return err
-		}
-		if err = os.Remove(w.f.Name()); err != nil {
-			return err
-		}
-		return nil
+//		}
+//		if err = w.f.Close(); err != nil {
+//			return err
+//		}
+//		if err = os.Remove(w.f.Name()); err != nil {
+//			return err
+//		}
+//		return nil
 	}
 	if w.cmp != nil {
 		if err = w.cmp.Close(); err != nil {
@@ -275,16 +275,16 @@ func (w *writer) Close() error {
 	if err = w.bw.Flush(); err != nil {
 		return err
 	}
-	if isStdout(w.f) {
+//	if isStdout(w.f) {
 		return nil
-	}
-	if err = w.f.Close(); err != nil {
-		return err
-	}
-	if err = os.Rename(w.f.Name(), w.name); err != nil {
-		return err
-	}
-	return nil
+//	}
+//	if err = w.f.Close(); err != nil {
+//		return err
+//	}
+//	if err = os.Rename(w.f.Name(), w.name); err != nil {
+//		return err
+//	}
+//	return nil
 }
 
 // removeTmpFile removes the temporary file for the writer. It is used
@@ -301,7 +301,7 @@ type reader struct {
 	f *os.File
 	io.Reader
 	success bool
-	keep    bool
+	//keep    bool
 }
 
 // errNoRegular indicates that a file is not regular.
@@ -311,98 +311,98 @@ var errNoRegular = errors.New("no regular file")
 const specialBits = os.ModeSetuid | os.ModeSetgid | os.ModeSticky
 
 // openFile opens the given path with the given options.
-func openFile(path string, opts *options) (f *os.File, err error) {
-	if path == "-" {
+func openFile(/*path string, opts *options*/) (f *os.File, err error) {
+	//if path == "-" {
 		return os.Stdin, nil
-	}
-	fi, err := os.Lstat(path)
-	if err != nil {
-		return nil, err
-	}
-	fm := fi.Mode()
-	if !fm.IsRegular() {
-		if !opts.force || fm&os.ModeSymlink == 0 {
-			return nil, &userPathError{Path: path,
-				Err: errNoRegular}
-		}
-	}
-	if f, err = os.Open(path); err != nil {
-		return nil, err
-	}
-	if fi, err = f.Stat(); err != nil {
-		return nil, err
-	}
-	fm = fi.Mode()
-	if !fm.IsRegular() {
-		return nil, &userPathError{Path: path, Err: errNoRegular}
-	}
-	if fm&specialBits != 0 && !opts.force {
-		return nil, &userPathError{Path: path,
-			Err: errors.New("setuid, setgid and/or sticky bit set")}
-	}
-	return f, nil
+	//}
+//	fi, err := os.Lstat(path)
+//	if err != nil {
+//		return nil, err
+//	}
+//	fm := fi.Mode()
+//	if !fm.IsRegular() {
+//		if !opts.force || fm&os.ModeSymlink == 0 {
+//			return nil, &userPathError{Path: path,
+//				Err: errNoRegular}
+//		}
+//	}
+//	if f, err = os.Open(path); err != nil {
+//		return nil, err
+//	}
+//	if fi, err = f.Stat(); err != nil {
+//		return nil, err
+//	}
+//	fm = fi.Mode()
+//	if !fm.IsRegular() {
+//		return nil, &userPathError{Path: path, Err: errNoRegular}
+//	}
+//	if fm&specialBits != 0 && !opts.force {
+//		return nil, &userPathError{Path: path,
+//			Err: errors.New("setuid, setgid and/or sticky bit set")}
+//	}
+//	return f, nil
 }
 
 var errInvalidFormat = errors.New("file format not recognized")
 
-// readerFormat tries to determine the type of a file. Currently it
-// checks for the XZ header magic and if it is not present assumes that
-// the file has been encoded by LZMA. The format field in options is
-// updated.
-func readerFormat(br *bufio.Reader, opts *options) (f *format, err error) {
-	var ok bool
-	if f, ok = formats[opts.format]; ok {
-		if !f.validHeader(br) {
-			return nil, errInvalidFormat
-		}
-		return f, nil
-	}
-	if opts.format != "auto" {
-		return nil, fmt.Errorf("compression format %s not supported",
-			opts.format)
-	}
-	for format, f := range formats {
-		if f.validHeader(br) {
-			opts.format = format
-			return f, nil
-		}
-	}
-	return nil, errInvalidFormat
-}
+//// readerFormat tries to determine the type of a file. Currently it
+//// checks for the XZ header magic and if it is not present assumes that
+//// the file has been encoded by LZMA. The format field in options is
+//// updated.
+//func readerFormat(br *bufio.Reader, opts *options) (f *format, err error) {
+//	var ok bool
+//	if f, ok = formats[opts.format]; ok {
+//		if !f.validHeader(br) {
+//			return nil, errInvalidFormat
+//		}
+//		return f, nil
+//	}
+//	if opts.format != "auto" {
+//		return nil, fmt.Errorf("compression format %s not supported",
+//			opts.format)
+//	}
+//	for format, f := range formats {
+//		if f.validHeader(br) {
+//			opts.format = format
+//			return f, nil
+//		}
+//	}
+//	return nil, errInvalidFormat
+//}
 
-// newDecompressor creates a new decompressor.
-func newDecompressor(br *bufio.Reader, opts *options) (dec io.Reader,
-	err error) {
-	if !opts.decompress {
-		panic("no decompressor needed")
-	}
-	f, err := readerFormat(br, opts)
-	if err != nil {
-		return nil, err
-	}
-	if dec, err = f.newDecompressor(br, opts); err != nil {
-		return nil, err
-	}
-	return dec, nil
-}
+//// newDecompressor creates a new decompressor.
+//func newDecompressor(br *bufio.Reader, opts *options) (dec io.Reader,
+//	err error) {
+//	if !opts.decompress {
+//		panic("no decompressor needed")
+//	}
+//	f, err := readerFormat(br, opts)
+//	if err != nil {
+//		return nil, err
+//	}
+//	if dec, err = f.newDecompressor(br, opts); err != nil {
+//		return nil, err
+//	}
+//	return dec, nil
+//}
 
 // newReader creates a new reader for files.
-func newReader(path string, opts *options) (r *reader, err error) {
-	f, err := openFile(path, opts)
+func newReader(/*path string, opts *options*/) (r *reader, err error) {
+	f, err := openFile(/*path, opts*/)
 	if err != nil {
 		return nil, err
 	}
 	br := bufio.NewReader(f)
-	if !opts.decompress {
-		r = &reader{f: f, Reader: br, keep: opts.keep || opts.stdout}
+//	if !opts.decompress {
+		r = &reader{f: f, Reader: br/*, keep: opts.keep || opts.stdout*/}
 		return r, nil
-	}
-	dec, err := newDecompressor(br, opts)
-	if err != nil {
-		return nil, &userPathError{path, err}
-	}
-	r = &reader{f: f, Reader: dec, keep: opts.keep || opts.stdout}
-	return r, nil
+//	}
+//	dec, err := newDecompressor(br, opts)
+//	if err != nil {
+//		return nil, &userPathError{path, err}
+//	}
+//	r = &reader{f: f, Reader: dec, keep: opts.keep || opts.stdout}
+//	return r, nil
 }
 
 // isStdin checks whether the given file reference is stdin.
@@ -423,7 +423,7 @@ func (r *reader) Close() error {
 	if err := r.f.Close(); err != nil {
 		return err
 	}
-	if r.keep || !r.success {
+	if /*r.keep ||*/ !r.success {
 		return nil
 	}
 	if err := os.Remove(r.f.Name()); err != nil {
@@ -472,22 +472,22 @@ func userError(err error) error {
 	return &userPathError{Path: pe.Path, Err: pe.Err}
 }
 
-func printErr(err error) {
-	if err != nil {
-		xlog.Warn(userError(err))
-	}
+func printErr(_/*err*/ error) {
+//	if err != nil {
+//		xlog.Warn(userError(err))
+//	}
 }
 
 // processFile process the file with the given path applying the
 // provided options.
-func processFile(path string, opts *options) (err error) {
-	r, err := newReader(path, opts)
+func processFile(/*path string, opts *options*/) (err error) {
+	r, err := newReader(/*path, opts*/)
 	if err != nil {
 		printErr(err)
 		return
 	}
 	defer r.Close()
-	w, err := newWriter(path, r.Perm(), opts)
+	w, err := newWriter(/*path, r.Perm(), opts*/)
 	if err != nil {
 		printErr(err)
 		return

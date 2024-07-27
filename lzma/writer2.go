@@ -5,7 +5,7 @@
 package lzma
 
 import (
-	"bytes"
+//	"bytes"
 	"errors"
 	"io"
 )
@@ -14,25 +14,25 @@ import (
 type Writer2Config struct {
 	// The properties for the encoding. If the it is nil the value
 	// {LC: 3, LP: 0, PB: 2} will be chosen.
-	Properties *Properties
+	//Properties *Properties
 	// The capacity of the dictionary. If DictCap is zero, the value
 	// 8 MiB will be chosen.
-	DictCap int
+	//DictCap int
 	// Size of the lookahead buffer; value 0 indicates default size
 	// 4096
 	BufSize int
 	// Match algorithm
-	Matcher MatchAlgorithm
+	//Matcher MatchAlgorithm
 }
 
 // fill replaces zero values with default values.
 func (c *Writer2Config) fill() {
-	if c.Properties == nil {
-		c.Properties = &Properties{LC: 3, LP: 0, PB: 2}
-	}
-	if c.DictCap == 0 {
-		c.DictCap = 8 * 1024 * 1024
-	}
+//	if c.Properties == nil {
+//		c.Properties = &Properties{LC: 3, LP: 0, PB: 2}
+//	}
+//	if c.DictCap == 0 {
+//		c.DictCap = 8 * 1024 * 1024
+//	}
 	if c.BufSize == 0 {
 		c.BufSize = 4096
 	}
@@ -42,28 +42,28 @@ func (c *Writer2Config) fill() {
 // replaced by default values.
 func (c *Writer2Config) Verify() error {
 	c.fill()
-	var err error
+	//var err error
 	if c == nil {
 		return errors.New("lzma: WriterConfig is nil")
 	}
-	if c.Properties == nil {
-		return errors.New("lzma: WriterConfig has no Properties set")
-	}
-	if err = c.Properties.verify(); err != nil {
-		return err
-	}
-	if !(MinDictCap <= c.DictCap && int64(c.DictCap) <= MaxDictCap) {
-		return errors.New("lzma: dictionary capacity is out of range")
-	}
-	if !(maxMatchLen <= c.BufSize) {
-		return errors.New("lzma: lookahead buffer size too small")
-	}
-	if c.Properties.LC+c.Properties.LP > 4 {
-		return errors.New("lzma: sum of lc and lp exceeds 4")
-	}
-	if err = c.Matcher.verify(); err != nil {
-		return err
-	}
+//	if c.Properties == nil {
+//		return errors.New("lzma: WriterConfig has no Properties set")
+//	}
+//	if err = c.Properties.verify(); err != nil {
+//		return err
+//	}
+//	if !(MinDictCap <= c.DictCap && int64(c.DictCap) <= MaxDictCap) {
+//		return errors.New("lzma: dictionary capacity is out of range")
+//	}
+//	if !(maxMatchLen <= c.BufSize) {
+//		return errors.New("lzma: lookahead buffer size too small")
+//	}
+//	if c.Properties.LC+c.Properties.LP > 4 {
+//		return errors.New("lzma: sum of lc and lp exceeds 4")
+//	}
+//	if err = c.Matcher.verify(); err != nil {
+//		return err
+//	}
 	return nil
 }
 
@@ -85,8 +85,8 @@ type Writer2 struct {
 	cstate chunkState
 	ctype  chunkType
 
-	buf bytes.Buffer
-	lbw LimitedByteWriter
+//	buf bytes.Buffer
+//	lbw LimitedByteWriter
 }
 
 // NewWriter2 creates an LZMA2 chunk sequence writer with the default
@@ -106,8 +106,8 @@ func (c Writer2Config) NewWriter2(lzma2 io.Writer) (w *Writer2, err error) {
 		cstate: start,
 		ctype:  start.defaultChunkType(),
 	}
-	w.buf.Grow(maxCompressed)
-	w.lbw = LimitedByteWriter{BW: &w.buf, N: maxCompressed}
+//	w.buf.Grow(maxCompressed)
+//	w.lbw = LimitedByteWriter{BW: &w.buf, N: maxCompressed}
 	//m, err := c.Matcher.new(c.DictCap)
 	//if err != nil {
 	//	return nil, err
@@ -155,12 +155,12 @@ func (w *Writer2) Write(p []byte) (n int, err error) {
 			q = p[n:]
 		}
 		//k, err := w.encoder.Write(q)
-	switch w.ctype {
-	case cLRND:
+//	switch w.ctype {
+//	case cLRND:
 		w.ctype = cUD
-	default:
-		w.ctype = cU
-	}
+//	default:
+//		w.ctype = cU
+//	}
 	//w.encoder.state = w.start
 
 	header := chunkHeader{
@@ -179,10 +179,10 @@ func (w *Writer2) Write(p []byte) (n int, err error) {
 		return k, err
 	}
 		n += k
-		if err != nil && err != ErrLimit {
+		if err != nil /*&& err != ErrLimit*/ {
 			return n, err
 		}
-		if err == ErrLimit || k == m {
+		if /*err == ErrLimit ||*/ k == m {
 			if err = w.flushChunk(); err != nil {
 				return n, err
 			}
@@ -285,8 +285,8 @@ func (w *Writer2) flushChunk() error {
 	//if err = w.writeChunk(); err != nil {
 	//	return err
 	//}
-	w.buf.Reset()
-	w.lbw.N = maxCompressed
+//	w.buf.Reset()
+//	w.lbw.N = maxCompressed
 	//if err = w.encoder.Reopen(&w.lbw); err != nil {
 	//	return err
 	//}

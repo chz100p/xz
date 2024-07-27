@@ -6,14 +6,14 @@ package xz
 
 import (
 	"bytes"
-	"crypto/sha256"
+//	"crypto/sha256"
 	"errors"
 	"fmt"
 	"hash"
 	"hash/crc32"
 	"io"
 
-	"github.com/chz100p/xz/lzma"
+//	"github.com/chz100p/xz/lzma"
 )
 
 // allZeros checks whether a given byte slice has only zeros.
@@ -46,10 +46,10 @@ const HeaderLen = 12
 
 // Constants for the checksum methods supported by xz.
 const (
-	None   byte = 0x0
+//	None   byte = 0x0
 	CRC32  byte = 0x1
-	CRC64  byte = 0x4
-	SHA256 byte = 0xa
+//	CRC64  byte = 0x4
+//	SHA256 byte = 0xa
 )
 
 // errInvalidFlags indicates that flags are invalid.
@@ -59,7 +59,7 @@ var errInvalidFlags = errors.New("xz: invalid flags")
 // invalid.
 func verifyFlags(flags byte) error {
 	switch flags {
-	case None, CRC32, CRC64, SHA256:
+	case /*None,*/ CRC32/*, CRC64, SHA256*/:
 		return nil
 	default:
 		return errInvalidFlags
@@ -68,10 +68,10 @@ func verifyFlags(flags byte) error {
 
 // flagstrings maps flag values to strings.
 var flagstrings = map[byte]string{
-	None:   "None",
+//	None:   "None",
 	CRC32:  "CRC-32",
-	CRC64:  "CRC-64",
-	SHA256: "SHA-256",
+//	CRC64:  "CRC-64",
+//	SHA256: "SHA-256",
 }
 
 // flagString returns the string representation for the given flags.
@@ -87,14 +87,14 @@ func flagString(flags byte) string {
 // hash method encoded in flags.
 func newHashFunc(flags byte) (newHash func() hash.Hash, err error) {
 	switch flags {
-	case None:
-		newHash = newNoneHash
+//	case None:
+//		newHash = newNoneHash
 	case CRC32:
 		newHash = newCRC32
-	case CRC64:
-		newHash = newCRC64
-	case SHA256:
-		newHash = sha256.New
+//	case CRC64:
+//		newHash = newCRC64
+//	case SHA256:
+//		newHash = sha256.New
 	default:
 		err = errInvalidFlags
 	}
@@ -109,50 +109,50 @@ type header struct {
 // Errors returned by readHeader.
 var errHeaderMagic = errors.New("xz: invalid header magic bytes")
 
-// ValidHeader checks whether data is a correct xz file header. The
-// length of data must be HeaderLen.
-func ValidHeader(data []byte) bool {
-	var h header
-	err := h.UnmarshalBinary(data)
-	return err == nil
-}
+//// ValidHeader checks whether data is a correct xz file header. The
+//// length of data must be HeaderLen.
+//func ValidHeader(data []byte) bool {
+//	var h header
+//	err := h.UnmarshalBinary(data)
+//	return err == nil
+//}
 
 // String returns a string representation of the flags.
 func (h header) String() string {
 	return flagString(h.flags)
 }
 
-// UnmarshalBinary reads header from the provided data slice.
-func (h *header) UnmarshalBinary(data []byte) error {
-	// header length
-	if len(data) != HeaderLen {
-		return errors.New("xz: wrong file header length")
-	}
-
-	// magic header
-	if !bytes.Equal(headerMagic, data[:6]) {
-		return errHeaderMagic
-	}
-
-	// checksum
-	crc := crc32.NewIEEE()
-	crc.Write(data[6:8])
-	if uint32LE(data[8:]) != crc.Sum32() {
-		return errors.New("xz: invalid checksum for file header")
-	}
-
-	// stream flags
-	if data[6] != 0 {
-		return errInvalidFlags
-	}
-	flags := data[7]
-	if err := verifyFlags(flags); err != nil {
-		return err
-	}
-
-	h.flags = flags
-	return nil
-}
+//// UnmarshalBinary reads header from the provided data slice.
+//func (h *header) UnmarshalBinary(data []byte) error {
+//	// header length
+//	if len(data) != HeaderLen {
+//		return errors.New("xz: wrong file header length")
+//	}
+//
+//	// magic header
+//	if !bytes.Equal(headerMagic, data[:6]) {
+//		return errHeaderMagic
+//	}
+//
+//	// checksum
+//	crc := crc32.NewIEEE()
+//	crc.Write(data[6:8])
+//	if uint32LE(data[8:]) != crc.Sum32() {
+//		return errors.New("xz: invalid checksum for file header")
+//	}
+//
+//	// stream flags
+//	if data[6] != 0 {
+//		return errInvalidFlags
+//	}
+//	flags := data[7]
+//	if err := verifyFlags(flags); err != nil {
+//		return err
+//	}
+//
+//	h.flags = flags
+//	return nil
+//}
 
 // MarshalBinary generates the xz file header.
 func (h *header) MarshalBinary() (data []byte, err error) {
@@ -228,41 +228,41 @@ func (f *footer) MarshalBinary() (data []byte, err error) {
 	return data, nil
 }
 
-// UnmarshalBinary sets the footer value by unmarshalling an xz file
-// footer.
-func (f *footer) UnmarshalBinary(data []byte) error {
-	if len(data) != footerLen {
-		return errors.New("xz: wrong footer length")
-	}
-
-	// magic bytes
-	if !bytes.Equal(data[10:], footerMagic) {
-		return errors.New("xz: footer magic invalid")
-	}
-
-	// CRC-32
-	crc := crc32.NewIEEE()
-	crc.Write(data[4:10])
-	if uint32LE(data) != crc.Sum32() {
-		return errors.New("xz: footer checksum error")
-	}
-
-	var g footer
-	// backward size (index size)
-	g.indexSize = (int64(uint32LE(data[4:])) + 1) * 4
-
-	// flags
-	if data[8] != 0 {
-		return errInvalidFlags
-	}
-	g.flags = data[9]
-	if err := verifyFlags(g.flags); err != nil {
-		return err
-	}
-
-	*f = g
-	return nil
-}
+//// UnmarshalBinary sets the footer value by unmarshalling an xz file
+//// footer.
+//func (f *footer) UnmarshalBinary(data []byte) error {
+//	if len(data) != footerLen {
+//		return errors.New("xz: wrong footer length")
+//	}
+//
+//	// magic bytes
+//	if !bytes.Equal(data[10:], footerMagic) {
+//		return errors.New("xz: footer magic invalid")
+//	}
+//
+//	// CRC-32
+//	crc := crc32.NewIEEE()
+//	crc.Write(data[4:10])
+//	if uint32LE(data) != crc.Sum32() {
+//		return errors.New("xz: footer checksum error")
+//	}
+//
+//	var g footer
+//	// backward size (index size)
+//	g.indexSize = (int64(uint32LE(data[4:])) + 1) * 4
+//
+//	// flags
+//	if data[8] != 0 {
+//		return errInvalidFlags
+//	}
+//	g.flags = data[9]
+//	if err := verifyFlags(g.flags); err != nil {
+//		return err
+//	}
+//
+//	*f = g
+//	return nil
+//}
 
 /*** Block Header ***/
 
@@ -310,122 +310,122 @@ const (
 // instead of an expected block header indicator.
 var errIndexIndicator = errors.New("xz: found index indicator")
 
-// readBlockHeader reads the block header.
-func readBlockHeader(r io.Reader) (h *blockHeader, n int, err error) {
-	var buf bytes.Buffer
-	buf.Grow(20)
+//// readBlockHeader reads the block header.
+//func readBlockHeader(r io.Reader) (h *blockHeader, n int, err error) {
+//	var buf bytes.Buffer
+//	buf.Grow(20)
+//
+//	// block header size
+//	z, err := io.CopyN(&buf, r, 1)
+//	n = int(z)
+//	if err != nil {
+//		return nil, n, err
+//	}
+//	s := buf.Bytes()[0]
+//	if s == 0 {
+//		return nil, n, errIndexIndicator
+//	}
+//
+//	// read complete header
+//	headerLen := (int(s) + 1) * 4
+//	buf.Grow(headerLen - 1)
+//	z, err = io.CopyN(&buf, r, int64(headerLen-1))
+//	n += int(z)
+//	if err != nil {
+//		return nil, n, err
+//	}
+//
+//	// unmarshal block header
+//	h = new(blockHeader)
+//	if err = h.UnmarshalBinary(buf.Bytes()); err != nil {
+//		return nil, n, err
+//	}
+//
+//	return h, n, nil
+//}
 
-	// block header size
-	z, err := io.CopyN(&buf, r, 1)
-	n = int(z)
-	if err != nil {
-		return nil, n, err
-	}
-	s := buf.Bytes()[0]
-	if s == 0 {
-		return nil, n, errIndexIndicator
-	}
+//// readSizeInBlockHeader reads the uncompressed or compressed size
+//// fields in the block header. The present value informs the function
+//// whether the respective field is actually present in the header.
+//func readSizeInBlockHeader(r io.ByteReader, present bool) (n int64, err error) {
+//	if !present {
+//		return -1, nil
+//	}
+//	x, _, err := readUvarint(r)
+//	if err != nil {
+//		return 0, err
+//	}
+//	if x >= 1<<63 {
+//		return 0, errors.New("xz: size overflow in block header")
+//	}
+//	return int64(x), nil
+//}
 
-	// read complete header
-	headerLen := (int(s) + 1) * 4
-	buf.Grow(headerLen - 1)
-	z, err = io.CopyN(&buf, r, int64(headerLen-1))
-	n += int(z)
-	if err != nil {
-		return nil, n, err
-	}
-
-	// unmarshal block header
-	h = new(blockHeader)
-	if err = h.UnmarshalBinary(buf.Bytes()); err != nil {
-		return nil, n, err
-	}
-
-	return h, n, nil
-}
-
-// readSizeInBlockHeader reads the uncompressed or compressed size
-// fields in the block header. The present value informs the function
-// whether the respective field is actually present in the header.
-func readSizeInBlockHeader(r io.ByteReader, present bool) (n int64, err error) {
-	if !present {
-		return -1, nil
-	}
-	x, _, err := readUvarint(r)
-	if err != nil {
-		return 0, err
-	}
-	if x >= 1<<63 {
-		return 0, errors.New("xz: size overflow in block header")
-	}
-	return int64(x), nil
-}
-
-// UnmarshalBinary unmarshals the block header.
-func (h *blockHeader) UnmarshalBinary(data []byte) error {
-	// Check header length
-	s := data[0]
-	if data[0] == 0 {
-		return errIndexIndicator
-	}
-	headerLen := (int(s) + 1) * 4
-	if len(data) != headerLen {
-		return fmt.Errorf("xz: data length %d; want %d", len(data),
-			headerLen)
-	}
-	n := headerLen - 4
-
-	// Check CRC-32
-	crc := crc32.NewIEEE()
-	crc.Write(data[:n])
-	if crc.Sum32() != uint32LE(data[n:]) {
-		return errors.New("xz: checksum error for block header")
-	}
-
-	// Block header flags
-	flags := data[1]
-	if flags&reservedBlockFlags != 0 {
-		return errors.New("xz: reserved block header flags set")
-	}
-
-	r := bytes.NewReader(data[2:n])
-
-	// Compressed size
-	var err error
-	h.compressedSize, err = readSizeInBlockHeader(
-		r, flags&compressedSizePresent != 0)
-	if err != nil {
-		return err
-	}
-
-	// Uncompressed size
-	h.uncompressedSize, err = readSizeInBlockHeader(
-		r, flags&uncompressedSizePresent != 0)
-	if err != nil {
-		return err
-	}
-
-	h.filters, err = readFilters(r, int(flags&filterCountMask)+1)
-	if err != nil {
-		return err
-	}
-
-	// Check padding
-	// Since headerLen is a multiple of 4 we don't need to check
-	// alignment.
-	k := r.Len()
-	// The standard spec says that the padding should have not more
-	// than 3 bytes. However we found paddings of 4 or 5 in the
-	// wild. See https://github.com/chz100p/xz/pull/11 and
-	// https://github.com/chz100p/xz/issues/15
-	//
-	// The only reasonable approach seems to be to ignore the
-	// padding size. We still check that all padding bytes are zero.
-	if !allZeros(data[n-k : n]) {
-		return errPadding
-	}
-	return nil
-}
+//// UnmarshalBinary unmarshals the block header.
+//func (h *blockHeader) UnmarshalBinary(data []byte) error {
+//	// Check header length
+//	s := data[0]
+//	if data[0] == 0 {
+//		return errIndexIndicator
+//	}
+//	headerLen := (int(s) + 1) * 4
+//	if len(data) != headerLen {
+//		return fmt.Errorf("xz: data length %d; want %d", len(data),
+//			headerLen)
+//	}
+//	n := headerLen - 4
+//
+//	// Check CRC-32
+//	crc := crc32.NewIEEE()
+//	crc.Write(data[:n])
+//	if crc.Sum32() != uint32LE(data[n:]) {
+//		return errors.New("xz: checksum error for block header")
+//	}
+//
+//	// Block header flags
+//	flags := data[1]
+//	if flags&reservedBlockFlags != 0 {
+//		return errors.New("xz: reserved block header flags set")
+//	}
+//
+//	r := bytes.NewReader(data[2:n])
+//
+//	// Compressed size
+//	var err error
+//	h.compressedSize, err = readSizeInBlockHeader(
+//		r, flags&compressedSizePresent != 0)
+//	if err != nil {
+//		return err
+//	}
+//
+//	// Uncompressed size
+//	h.uncompressedSize, err = readSizeInBlockHeader(
+//		r, flags&uncompressedSizePresent != 0)
+//	if err != nil {
+//		return err
+//	}
+//
+//	h.filters, err = readFilters(r, int(flags&filterCountMask)+1)
+//	if err != nil {
+//		return err
+//	}
+//
+//	// Check padding
+//	// Since headerLen is a multiple of 4 we don't need to check
+//	// alignment.
+//	k := r.Len()
+//	// The standard spec says that the padding should have not more
+//	// than 3 bytes. However we found paddings of 4 or 5 in the
+//	// wild. See https://github.com/chz100p/xz/pull/11 and
+//	// https://github.com/chz100p/xz/issues/15
+//	//
+//	// The only reasonable approach seems to be to ignore the
+//	// padding size. We still check that all padding bytes are zero.
+//	if !allZeros(data[n-k : n]) {
+//		return errPadding
+//	}
+//	return nil
+//}
 
 // MarshalBinary marshals the binary header.
 func (h *blockHeader) MarshalBinary() (data []byte, err error) {
@@ -515,59 +515,59 @@ const (
 // filter represents a filter in the block header.
 type filter interface {
 	id() uint64
-	UnmarshalBinary(data []byte) error
+//	UnmarshalBinary(data []byte) error
 	MarshalBinary() (data []byte, err error)
-	reader(r io.Reader, c *ReaderConfig) (fr io.Reader, err error)
+//	reader(r io.Reader, c *ReaderConfig) (fr io.Reader, err error)
 	writeCloser(w io.WriteCloser, c *WriterConfig) (fw io.WriteCloser, err error)
 	// filter must be last filter
 	last() bool
 }
 
-// readFilter reads a block filter from the block header. At this point
-// in time only the LZMA2 filter is supported.
-func readFilter(r io.Reader) (f filter, err error) {
-	br := lzma.ByteReader(r)
-
-	// index
-	id, _, err := readUvarint(br)
-	if err != nil {
-		return nil, err
-	}
-
-	var data []byte
-	switch id {
-	case lzmaFilterID:
-		data = make([]byte, lzmaFilterLen)
-		data[0] = lzmaFilterID
-		if _, err = io.ReadFull(r, data[1:]); err != nil {
-			return nil, err
-		}
-		f = new(lzmaFilter)
-	default:
-		if id >= minReservedID {
-			return nil, errors.New(
-				"xz: reserved filter id in block stream header")
-		}
-		return nil, errors.New("xz: invalid filter id")
-	}
-	if err = f.UnmarshalBinary(data); err != nil {
-		return nil, err
-	}
-	return f, err
-}
-
-// readFilters reads count filters. At this point in time only the count
-// 1 is supported.
-func readFilters(r io.Reader, count int) (filters []filter, err error) {
-	if count != 1 {
-		return nil, errors.New("xz: unsupported filter count")
-	}
-	f, err := readFilter(r)
-	if err != nil {
-		return nil, err
-	}
-	return []filter{f}, err
-}
+//// readFilter reads a block filter from the block header. At this point
+//// in time only the LZMA2 filter is supported.
+//func readFilter(r io.Reader) (f filter, err error) {
+//	br := lzma.ByteReader(r)
+//
+//	// index
+//	id, _, err := readUvarint(br)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	var data []byte
+//	switch id {
+//	case lzmaFilterID:
+//		data = make([]byte, lzmaFilterLen)
+//		data[0] = lzmaFilterID
+//		if _, err = io.ReadFull(r, data[1:]); err != nil {
+//			return nil, err
+//		}
+//		f = new(lzmaFilter)
+//	default:
+//		if id >= minReservedID {
+//			return nil, errors.New(
+//				"xz: reserved filter id in block stream header")
+//		}
+//		return nil, errors.New("xz: invalid filter id")
+//	}
+//	if err = f.UnmarshalBinary(data); err != nil {
+//		return nil, err
+//	}
+//	return f, err
+//}
+//
+//// readFilters reads count filters. At this point in time only the count
+//// 1 is supported.
+//func readFilters(r io.Reader, count int) (filters []filter, err error) {
+//	if count != 1 {
+//		return nil, errors.New("xz: unsupported filter count")
+//	}
+//	f, err := readFilter(r)
+//	if err != nil {
+//		return nil, err
+//	}
+//	return []filter{f}, err
+//}
 
 /*** Index ***/
 
@@ -577,30 +577,30 @@ type record struct {
 	uncompressedSize int64
 }
 
-// readRecord reads an index record.
-func readRecord(r io.ByteReader) (rec record, n int, err error) {
-	u, k, err := readUvarint(r)
-	n += k
-	if err != nil {
-		return rec, n, err
-	}
-	rec.unpaddedSize = int64(u)
-	if rec.unpaddedSize < 0 {
-		return rec, n, errors.New("xz: unpadded size negative")
-	}
-
-	u, k, err = readUvarint(r)
-	n += k
-	if err != nil {
-		return rec, n, err
-	}
-	rec.uncompressedSize = int64(u)
-	if rec.uncompressedSize < 0 {
-		return rec, n, errors.New("xz: uncompressed size negative")
-	}
-
-	return rec, n, nil
-}
+//// readRecord reads an index record.
+//func readRecord(r io.ByteReader) (rec record, n int, err error) {
+//	u, k, err := readUvarint(r)
+//	n += k
+//	if err != nil {
+//		return rec, n, err
+//	}
+//	rec.unpaddedSize = int64(u)
+//	if rec.unpaddedSize < 0 {
+//		return rec, n, errors.New("xz: unpadded size negative")
+//	}
+//
+//	u, k, err = readUvarint(r)
+//	n += k
+//	if err != nil {
+//		return rec, n, err
+//	}
+//	rec.uncompressedSize = int64(u)
+//	if rec.uncompressedSize < 0 {
+//		return rec, n, errors.New("xz: uncompressed size negative")
+//	}
+//
+//	return rec, n, nil
+//}
 
 // MarshalBinary converts an index record in its binary encoding.
 func (rec *record) MarshalBinary() (data []byte, err error) {
@@ -660,62 +660,62 @@ func writeIndex(w io.Writer, index []record) (n int64, err error) {
 	return n, err
 }
 
-// readIndexBody reads the index from the reader. It assumes that the
-// index indicator has already been read.
-func readIndexBody(r io.Reader, expectedRecordLen int) (records []record, n int64, err error) {
-	crc := crc32.NewIEEE()
-	// index indicator
-	crc.Write([]byte{0})
-
-	br := lzma.ByteReader(io.TeeReader(r, crc))
-
-	// number of records
-	u, k, err := readUvarint(br)
-	n += int64(k)
-	if err != nil {
-		return nil, n, err
-	}
-	recLen := int(u)
-	if recLen < 0 || uint64(recLen) != u {
-		return nil, n, errors.New("xz: record number overflow")
-	}
-	if recLen != expectedRecordLen {
-		return nil, n, fmt.Errorf(
-			"xz: index length is %d; want %d",
-			recLen, expectedRecordLen)
-	}
-
-	// list of records
-	records = make([]record, recLen)
-	for i := range records {
-		records[i], k, err = readRecord(br)
-		n += int64(k)
-		if err != nil {
-			return nil, n, err
-		}
-	}
-
-	p := make([]byte, padLen(int64(n+1)), 4)
-	k, err = io.ReadFull(br.(io.Reader), p)
-	n += int64(k)
-	if err != nil {
-		return nil, n, err
-	}
-	if !allZeros(p) {
-		return nil, n, errors.New("xz: non-zero byte in index padding")
-	}
-
-	// crc32
-	s := crc.Sum32()
-	p = p[:4]
-	k, err = io.ReadFull(br.(io.Reader), p)
-	n += int64(k)
-	if err != nil {
-		return records, n, err
-	}
-	if uint32LE(p) != s {
-		return nil, n, errors.New("xz: wrong checksum for index")
-	}
-
-	return records, n, nil
-}
+//// readIndexBody reads the index from the reader. It assumes that the
+//// index indicator has already been read.
+//func readIndexBody(r io.Reader, expectedRecordLen int) (records []record, n int64, err error) {
+//	crc := crc32.NewIEEE()
+//	// index indicator
+//	crc.Write([]byte{0})
+//
+//	br := lzma.ByteReader(io.TeeReader(r, crc))
+//
+//	// number of records
+//	u, k, err := readUvarint(br)
+//	n += int64(k)
+//	if err != nil {
+//		return nil, n, err
+//	}
+//	recLen := int(u)
+//	if recLen < 0 || uint64(recLen) != u {
+//		return nil, n, errors.New("xz: record number overflow")
+//	}
+//	if recLen != expectedRecordLen {
+//		return nil, n, fmt.Errorf(
+//			"xz: index length is %d; want %d",
+//			recLen, expectedRecordLen)
+//	}
+//
+//	// list of records
+//	records = make([]record, recLen)
+//	for i := range records {
+//		records[i], k, err = readRecord(br)
+//		n += int64(k)
+//		if err != nil {
+//			return nil, n, err
+//		}
+//	}
+//
+//	p := make([]byte, padLen(int64(n+1)), 4)
+//	k, err = io.ReadFull(br.(io.Reader), p)
+//	n += int64(k)
+//	if err != nil {
+//		return nil, n, err
+//	}
+//	if !allZeros(p) {
+//		return nil, n, errors.New("xz: non-zero byte in index padding")
+//	}
+//
+//	// crc32
+//	s := crc.Sum32()
+//	p = p[:4]
+//	k, err = io.ReadFull(br.(io.Reader), p)
+//	n += int64(k)
+//	if err != nil {
+//		return records, n, err
+//	}
+//	if uint32LE(p) != s {
+//		return nil, n, errors.New("xz: wrong checksum for index")
+//	}
+//
+//	return records, n, nil
+//}

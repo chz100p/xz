@@ -15,26 +15,26 @@ import (
 
 // WriterConfig describe the parameters for an xz writer.
 type WriterConfig struct {
-	Properties *lzma.Properties
-	DictCap    int
+//	Properties *lzma.Properties
+//	DictCap    int
 	BufSize    int
 	BlockSize  int64
 	// checksum method: CRC32, CRC64 or SHA256 (default: CRC32
 	CheckSum byte
 	// Forces NoChecksum (default: false)
-	NoCheckSum bool
-	// match algorithm
-	Matcher lzma.MatchAlgorithm
+//	NoCheckSum bool
+//	// match algorithm
+//	Matcher lzma.MatchAlgorithm
 }
 
 // fill replaces zero values with default values.
 func (c *WriterConfig) fill() {
-	if c.Properties == nil {
-		c.Properties = &lzma.Properties{LC: 3, LP: 0, PB: 2}
-	}
-	if c.DictCap == 0 {
-		c.DictCap = 8 * 1024 * 1024
-	}
+//	if c.Properties == nil {
+//		c.Properties = &lzma.Properties{LC: 3, LP: 0, PB: 2}
+//	}
+//	if c.DictCap == 0 {
+//		c.DictCap = 8 * 1024 * 1024
+//	}
 	if c.BufSize == 0 {
 		c.BufSize = 4096
 	}
@@ -44,9 +44,9 @@ func (c *WriterConfig) fill() {
 	if c.CheckSum == 0 {
 		c.CheckSum = CRC32
 	}
-	if c.NoCheckSum {
-		c.CheckSum = None
-	}
+//	if c.NoCheckSum {
+//		c.CheckSum = None
+//	}
 }
 
 // Verify checks the configuration for errors. Zero values will be
@@ -57,10 +57,10 @@ func (c *WriterConfig) Verify() error {
 	}
 	c.fill()
 	lc := lzma.Writer2Config{
-		Properties: c.Properties,
-		DictCap:    c.DictCap,
+//		Properties: c.Properties,
+//		DictCap:    c.DictCap,
 		BufSize:    c.BufSize,
-		Matcher:    c.Matcher,
+//		Matcher:    c.Matcher,
 	}
 	if err := lc.Verify(); err != nil {
 		return err
@@ -76,7 +76,7 @@ func (c *WriterConfig) Verify() error {
 
 // filters creates the filter list for the given parameters.
 func (c *WriterConfig) filters() []filter {
-	return []filter{&lzmaFilter{int64(c.DictCap)}}
+	return []filter{&lzmaFilter{/*int64(c.DictCap)*/}}
 }
 
 // maxInt64 defines the maximum 64-bit signed integer.
