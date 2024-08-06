@@ -42,7 +42,7 @@ func (c *WriterConfig) fill() {
 		c.BlockSize = maxInt64
 	}
 	if c.CheckSum == 0 {
-		c.CheckSum = CRC32
+		c.CheckSum = None //CRC32
 	}
 //	if c.NoCheckSum {
 //		c.CheckSum = None
